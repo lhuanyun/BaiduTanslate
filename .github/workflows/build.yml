@@ -1,4 +1,4 @@
-name: Build Translation Tool
+name: Build Translator
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
-    name: Build for Windows
+  build:
+    name: Build Windows Exe
     runs-on: windows-latest
     
     defaults:
@@ -17,38 +17,38 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # 1. 设置 MSYS2 环境 (这是在 Windows 上编译 CGO 程序的关键)
-    # 我们需要安装 Tesseract 的开发库、GCC 编译器和 GUI 相关的库
+    # 1. 配置 MSYS2 环境 (这是编译 CGO 的关键)
     - uses: msys2/setup-msys2@v2
       with:
         update: true
+        # 安装 Go, GCC, Tesseract开发库, X11库(Robotgo需要)
         install: >-
-          mingw-w64-x86_64-gcc
           mingw-w64-x86_64-go
+          mingw-w64-x86_64-gcc
           mingw-w64-x86_64-tesseract-ocr
           mingw-w64-x86_64-leptonica
           mingw-w64-x86_64-libx11
           mingw-w64-x86_64-xproto
           git
-          base-devel
 
-    # 2. 自动整理依赖 (因为你在网页上写代码，可能没有生成 go.sum)
-    - name: Tidy Dependencies
+    # 2. 下载依赖
+    - name: Download Deps
       run: |
         export PATH=$PATH:/mingw64/bin
         go mod tidy
 
     # 3. 编译程序
-    # 注意：去除 cmd 窗口通常用 -ldflags -H=windowsgui，但在调试阶段建议先保留以便看报错
     - name: Build
       run: |
         export PATH=$PATH:/mingw64/bin
+        # 启用 CGO
         export CGO_ENABLED=1
-        go build -v -o translator.exe main.go
+        # 编译 -ldflags -H=windowsgui 去除黑窗口(cmd)
+        go build -ldflags -H=windowsgui -o translator.exe main.go
 
-    # 4. 上传编译结果
+    # 4. 上传结果
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: translator-windows-exe
+        name: translator-windows
         path: translator.exe
